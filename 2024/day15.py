@@ -22,63 +22,66 @@ class Direction:
         if s == "v": self.y = 1
         if s == "<": self.x = -1
         if s == ">": self.x = 1
-        
-area = []
-directions = []
-robot = None
 
-for line in load_file():
-    if(line.startswith("#")):
-        row = []
+def giveAreaDirectionsAndRobot():
+    area = []
+    directions = []
+    robot = None
+    y = 0
+    for line in load_file():
+        if(line.startswith("#")):
+            x = 0
+            row = []
+            for letter in line:
+                if letter == "@":
+                    row += [".", "."]
+                    robot = Robot(x, y)
+                elif letter == "O":
+                    row += ["[", "]"]
+                else:
+                    row += [letter, letter]
+                x += 2
+            area.append(row)
+            y += 1
+            continue
         for letter in line:
-            if letter == "@":
-                row += ["@", "."]
-            elif letter == "O":
-                row += ["[", "]"]
-            else:
-                row += [letter, letter]
-        area.append(row)
-        continue
-    for letter in line:
-        directions.append(Direction(letter))
+            directions.append(Direction(letter))
+    return area, directions, robot
+
+area, directions, robot = giveAreaDirectionsAndRobot()
+
 
 MAX_Y = len(area)
 MAX_X = len(area[0])
 
-moved = [[False for i in range(MAX_X)] for j in range(MAX_Y)]
+def siblingDx(value):
+    if value == "[": return 1
+    if value == "]": return -1
+    return 0
 
-for y in range(MAX_Y):
-    for x in range(MAX_X):
-        if area[y][x] == "@":
-            robot = Robot(x, y)
-            area[y][x] = "."
-
-def canMoveVertical(x, y, area, dy):
+def canMoveVertical(x, y, dy):
     look_y = y + dy
     if area[look_y][x] == "#": return False
     if area[look_y][x] == ".": return True
-    if area[look_y][x] == "[":
-        return canMoveVertical(x,look_y,area,dy) and canMoveVertical(x+1,look_y,area,dy)
-    if area[look_y][x] == "]":
-        return canMoveVertical(x,look_y,area,dy) and canMoveVertical(x-1,look_y,area,dy)
+    dx = siblingDx(area[look_y][x])
+    return canMoveVertical(x,look_y,dy) and canMoveVertical(x+dx,look_y,dy)
 
-def moveVertical(x, y, area, dy):
+
+
+def moveVertical(x, y, dy, moved):
     if moved[y][x]: return
     moved[y][x] = True
     look_y = y + dy
     
     if area[look_y][x] == ".":
         area[look_y][x] = area[y][x]
-    elif area[look_y][x] == "[":
-        moveVertical(x,look_y,area,dy) 
-        moveVertical(x+1,look_y,area,dy)
-        area[look_y][x] = area[y][x]
-    elif area[look_y][x] == "]":
-        moveVertical(x,look_y,area,dy) 
-        moveVertical(x-1,look_y,area,dy)
-        area[look_y][x] = area[y][x]
+        return
+    moveVertical(x,look_y,dy,moved) 
+    moveVertical(x+siblingDx(area[look_y][x]),look_y,dy,moved)
+    area[look_y][x] = area[y][x]
     
-def removeSingles(area):
+    
+def removeSingles():
     for y in range(MAX_Y):
         for x in range(MAX_X-1):
             if area[y][x] == "[" and area[y][x+1] != "]":
@@ -114,11 +117,11 @@ for direction in tqdm(directions):
     if direction.y == 0:
         moveHorizontal(robot, area, direction.x)
     else:
-        if canMoveVertical(robot.x, robot.y, area, direction.y):
+        if canMoveVertical(robot.x, robot.y, direction.y):
             moved = [[False for i in range(MAX_X)] for j in range(MAX_Y)]
-            moveVertical(robot.x, robot.y, area, direction.y)
+            moveVertical(robot.x, robot.y, direction.y, moved)
             robot.move(direction)
-            removeSingles(area)
+            removeSingles()
    
 
 total = 0
